@@ -7,13 +7,4 @@ DEF_EN = {
 	"TEAM_ERROR": "An error occured while modifying the team"
 }
 
-def send_team(team_name, message):
-	
 
-def send_qm(message):
-	
-
-def send(channel, message):
-
-
-def send_pm(user, message):

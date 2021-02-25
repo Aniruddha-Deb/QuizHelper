@@ -1,8 +1,9 @@
+import re
+
 import discord
-import messenger
 import os
 from discord.ext import commands
-from discord.ext.commands import Bot
+from discord.ext.commands import Bot, ArgumentParsingError
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -21,17 +22,38 @@ class TeamCog(commands.Cog):
 
 	@commands.command(name="tc", help="Create a team with the following members")
 	@commands.has_any_role(ROLE_QM)
-	async def team_create(self, ctx, args):
-		print("create team: ", args)
+	async def team_create(self, ctx, team, *members: discord.User):
+		# ? check first if the given team exists
+		# then check if any of the participants is already in a team
+		# if both of above are good, create the team and stuff
+		print("create team: ", team, members)
+		if len(members) < 1:
+			raise ArgumentParsingError()
+
+		if not self.participants[TEAMS][team]:
+			await ctx.send("That Team already exists! Aborting command")
+		else:
+			# create team
+
+			self.participants[TEAMS][team] = members
+			guild = ctx.guild
+			role = next((role for role in guild.roles() if role.name == team), None)
+			if not role:
+				# create role
+				role = guild.create_role(name=team)
+
+			for member in members:
+				await self.bot.add_roles(member, role)
+
 
 	@commands.command(name="ta", help="Add members to given team")
 	@commands.has_any_role(ROLE_QM)
-	async def team_add(self, ctx, args):
+	async def team_add(self, ctx, *args):
 		print("add to team: ", args)
 
 	@commands.command(name="tr", help="Remove members from given team")
 	@commands.has_any_role(ROLE_QM)
-	async def team_remove(self, ctx, args):
+	async def team_remove(self, ctx, *args):
 		print("remove from team: ", args)
 
 class PounceCog(commands.Cog):
@@ -54,6 +76,8 @@ async def on_ready():
 async def on_command_error(ctx, error):
 	if isinstance(error, commands.CheckFailure):
 		await ctx.send("You do not have permission to use that command")
+	elif isinstance(error, ArgumentParsingError):
+		await ctx.send("Syntax error. Did you type that command properly?")
 
 bot.add_cog(TeamCog(bot))
 bot.add_cog(PounceCog(bot))

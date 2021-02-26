@@ -28,28 +28,45 @@ class TeamCog(commands.Cog):
 		# if both of above are good, create the team and stuff
 		print("create team: ", team, members)
 		if len(members) < 1:
+			print("Syntax error")
 			raise ArgumentParsingError()
 
-		if not self.participants[TEAMS][team]:
+		if team in self.participants[TEAMS].keys():
+			print("Team exists")
 			await ctx.send("That Team already exists! Aborting command")
 		else:
 			# create team
-
+			print("Creating team")
 			self.participants[TEAMS][team] = members
 			guild = ctx.guild
-			role = next((role for role in guild.roles() if role.name == team), None)
-			if not role:
+			role = next((r for r in guild.roles if r.name == team), None)
+			if role == None:
 				# create role
-				role = guild.create_role(name=team)
-
+				print("Creating role")
+				role = await guild.create_role(name=team)
+			
 			for member in members:
-				await self.bot.add_roles(member, role)
+				print("Adding member to role")
+				await member.add_roles(role)
+			
+			# create chatroom + VC for team members
+			qm_role = discord.utils.get(guild.roles, name=ROLE_QM)
+			overwrites = {
+				guild.default_role: discord.PermissionOverwrite(read_messages=False),
+				guild.me: discord.PermissionOverwrite(read_messages=True),
+				role: discord.PermissionOverwrite(read_messages=True),
+				qm_role: discord.PermissionOverwrite(read_messages=True)
+			}
+			await guild.create_text_channel(team, overwrites=overwrites)
+			await guild.create_voice_channel(team, overwrites=overwrites)
 
+			await ctx.send("Successfully created team")
 
 	@commands.command(name="ta", help="Add members to given team")
 	@commands.has_any_role(ROLE_QM)
 	async def team_add(self, ctx, *args):
-		print("add to team: ", args)
+		guild = ctx.guild
+		await guild.create_role("Team1")
 
 	@commands.command(name="tr", help="Remove members from given team")
 	@commands.has_any_role(ROLE_QM)

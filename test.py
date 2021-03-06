@@ -1,6 +1,14 @@
-dict = {}
-team = "Team 1"
+class User:
+	def __init__(self, name, age):
+		self.name = name
+		self.age = age
+	
+	def __str__(self):
+		return f"{self.name}: {self.age}"
 
-print(dict)
-print(dict.keys())
-print(team in dict.keys())
+a = User("Aniruddha Deb", 18)
+dic = {"me": a}
+print(a)
+
+for key in dic:
+	print(key)

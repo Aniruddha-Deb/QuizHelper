@@ -95,7 +95,7 @@ class TeamCog(commands.Cog):
 		
 	@commands.command(name="tl", help="Shows score leaderboard")
 	@commands.has_any_role(ROLE_QM)
-	async def leaderboard(self, ctx, team: int):
+	async def leaderboard(self, ctx):
 		scores = ""
 		for team in self.teams:
 			scores += f"{self.teams[team].name}: {self.teams[team].score}\n"
@@ -112,12 +112,14 @@ class PounceCog(commands.Cog):
 	@commands.command(name="p", help="pounce on active question")
 	async def pounce(self, ctx, *, arg):
 		p_eligible = False
+		team_name = None
 		for role in ctx.author.roles:
 			if role.name.startswith(TEAM_PREFIX):
 				p_eligible = True
+				team_name = role.name
 		
 		if self.pounce_open and p_eligible:
-			self.teams[role.name].pounce = arg
+			self.teams[team_name].pounce = arg
 			await ctx.send("Your pounce has been registered")
 		elif p_eligible and not self.pounce_open:
 			await ctx.send("Could not register pounce: window closed or no question active")

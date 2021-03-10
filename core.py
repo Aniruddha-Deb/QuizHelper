@@ -39,7 +39,6 @@ class TeamCog(commands.Cog):
 
 	def __init__(self, bot):
 		self.bot = bot
-		self.qms = []
 		self.teams = {}
 		self.rt = -1;
 
@@ -79,36 +78,79 @@ class TeamCog(commands.Cog):
 		for team in self.teams:
 			print(self.teams[team])
 
+	@commands.command(name="ts", help="Scores teams")
+	@commands.has_any_role(ROLE_QM)
+	async def score(self, ctx, score: int, *teams: int):
+		for team in teams:
+			tname = TEAM_PREFIX+str(team)
+			self.teams[tname].score += score
+			curr_score = self.teams[tname].score
+			await self.teams[tname].text_channel.send(f"You got {score} points for that question. Current score: {curr_score}")
+
+	@commands.command(name="td", help="Specifies direct to which team")
+	@commands.has_any_role(ROLE_QM)
+	async def direct_to(self, ctx, team: int):
+		for key in self.teams:
+			await self.teams[key].text_channel.send(f"Next question direct to team {team}")
+		
+	@commands.command(name="tl", help="Shows score leaderboard")
+	@commands.has_any_role(ROLE_QM)
+	async def leaderboard(self, ctx, team: int):
+		scores = ""
+		for team in self.teams:
+			scores += f"{self.teams[team].name}: {self.teams[team].score}\n"
+		for team in self.teams:
+			await self.teams[team].text_channel.send(scores)
+
 class PounceCog(commands.Cog):
 	
 	def __init__(self, bot):
 		self.bot = bot
 		self.teams = self.bot.get_cog("TeamCog").teams
+		self.pounce_open = False
 
 	@commands.command(name="p", help="pounce on active question")
 	async def pounce(self, ctx, *, arg):
+		p_eligible = False
 		for role in ctx.author.roles:
 			if role.name.startswith(TEAM_PREFIX):
-				self.teams[role.name].pounce = arg
-				await ctx.send("Your pounce has been registered")
+				p_eligible = True
+		
+		if self.pounce_open and p_eligible:
+			self.teams[role.name].pounce = arg
+			await ctx.send("Your pounce has been registered")
+		elif p_eligible and not self.pounce_open:
+			await ctx.send("Could not register pounce: window closed or no question active")
 
 	@commands.command(name="pc", help="Closes pounce")
 	@commands.has_any_role(ROLE_QM)
 	async def pounce_close(self, ctx):
-		pounces = ""
-		for team in self.teams:
-			pounces += f"{self.teams[team].name}: {self.teams[team].pounce}\n"
-			await self.teams[team].text_channel.send("Pounce is now closed")
-		
-		await ctx.send("Closed pounce")
-		await ctx.send(pounces)
+		if self.pounce_open:
+			self.pounce_open = False
+			pounces = ""
+			for team in self.teams:
+				pounces += f"{self.teams[team].name}: {self.teams[team].pounce}\n"
+				await self.teams[team].text_channel.send("Pounce is now closed")
+			
+			await ctx.send("Closed pounce")
+			# fingers crossed the QM does it from his own channel, otherwise 
+			# everyone will get to see everyone else's pounces :/
+			await ctx.send(pounces)
+		else:
+			await ctx.send("Could not close pounce, a pounce window might not be open")
+
 	
 	@commands.command(name="po", help="Opens pounce")
 	@commands.has_any_role(ROLE_QM)
 	async def pounce_open(self, ctx):
-		for team in self.teams:
-			await self.teams[team].text_channel.send("Pounce is now open!")
-			self.teams[team].pounce = ""
+		if not self.pounce_open:
+			self.pounce_open = True
+			for team in self.teams:
+				await self.teams[team].text_channel.send("Pounce is now open!")
+				self.teams[team].pounce = ""
+			await ctx.send("Opened pounce")
+		else:
+			await ctx.send("Could not open pounce, pounce window might already be open")
 
 @bot.event
 async def on_ready():
